@@ -33,6 +33,7 @@ print_color "blue" "⚙️ Tạo cấu trúc thư mục..."
 sudo mkdir -p /opt/homebrew/etc/nginx/sites-available
 sudo mkdir -p /opt/homebrew/etc/nginx/sites-enabled
 sudo mkdir -p /opt/homebrew/var/www
+sudo mkdir -p /opt/homebrew/etc/nginx/ssl
 sudo chown -R $(whoami) /opt/homebrew/var/www
 
 # Create main Nginx configuration
@@ -88,9 +89,19 @@ print_color "blue" "⚙️ Tạo virtual host mặc định..."
 cat > /opt/homebrew/etc/nginx/sites-available/default << 'EOL'
 server {
     listen 8080;
+    listen 443 ssl;
+    http2 on;
     server_name localhost;
     root /opt/homebrew/var/www;
     index index.php index.html index.htm;
+
+    # SSL Configuration
+    ssl_certificate     /opt/homebrew/etc/nginx/ssl/localhost.crt;
+    ssl_certificate_key /opt/homebrew/etc/nginx/ssl/localhost.key;
+    
+    # SSL Settings
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
 
     charset utf-8;
     client_max_body_size 100M;
@@ -136,8 +147,16 @@ EOL
 print_color "blue" "🔗 Kích hoạt virtual host mặc định..."
 ln -sf /opt/homebrew/etc/nginx/sites-available/default /opt/homebrew/etc/nginx/sites-enabled/
 
+# Create SSL directory and certificate
+print_color "blue" "🔒 Tạo SSL certificate cho localhost..."
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /opt/homebrew/etc/nginx/ssl/localhost.key \
+    -out /opt/homebrew/etc/nginx/ssl/localhost.crt \
+    -subj "/CN=localhost" \
+    -addext "subjectAltName=DNS:localhost"
+
 # Create test files
-print_color "blue" "📝 Tạo file test..."
+print_color "blue" "�� Tạo file test..."
 echo "<!DOCTYPE html><html><head><title>Welcome to Nginx!</title></head><body><h1>Welcome to Nginx!</h1></body></html>" > /opt/homebrew/var/www/index.html
 echo "<?php phpinfo(); ?>" > /opt/homebrew/var/www/info.php
 
