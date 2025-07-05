@@ -132,6 +132,12 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -addext "subjectAltName=DNS:$DOMAIN"
 check_status "Đã tạo SSL certificate" || exit 1
 
+# Set proper permissions for SSL files
+sudo chmod 644 "$SSL_DIR/$DOMAIN.key"
+sudo chmod 644 "$SSL_DIR/$DOMAIN.crt"
+sudo chown $(whoami):admin "$SSL_DIR/$DOMAIN.key"
+sudo chown $(whoami):admin "$SSL_DIR/$DOMAIN.crt"
+
 # Create Nginx configuration
 echo -e "${BLUE}Tạo cấu hình Nginx...${NORMAL}"
 NGINX_AVAILABLE="/opt/homebrew/etc/nginx/sites-available"
@@ -140,6 +146,39 @@ NGINX_ENABLED="/opt/homebrew/etc/nginx/sites-enabled"
 # Ensure directories exist with correct permissions
 sudo mkdir -p "$NGINX_AVAILABLE" "$NGINX_ENABLED"
 sudo chown -R $(whoami):admin "$NGINX_AVAILABLE" "$NGINX_ENABLED"
+
+# Create fastcgi_params if not exists
+if [ ! -f "/opt/homebrew/etc/nginx/fastcgi_params" ]; then
+    echo -e "${BLUE}Tạo file fastcgi_params...${NORMAL}"
+    sudo tee /opt/homebrew/etc/nginx/fastcgi_params << 'EOL'
+fastcgi_param  QUERY_STRING       $query_string;
+fastcgi_param  REQUEST_METHOD     $request_method;
+fastcgi_param  CONTENT_TYPE       $content_type;
+fastcgi_param  CONTENT_LENGTH     $content_length;
+
+fastcgi_param  SCRIPT_NAME        $fastcgi_script_name;
+fastcgi_param  REQUEST_URI        $request_uri;
+fastcgi_param  DOCUMENT_URI       $document_uri;
+fastcgi_param  DOCUMENT_ROOT      $document_root;
+fastcgi_param  SERVER_PROTOCOL    $server_protocol;
+fastcgi_param  REQUEST_SCHEME     $scheme;
+fastcgi_param  HTTPS             $https if_not_empty;
+
+fastcgi_param  GATEWAY_INTERFACE  CGI/1.1;
+fastcgi_param  SERVER_SOFTWARE    nginx/$nginx_version;
+
+fastcgi_param  REMOTE_ADDR        $remote_addr;
+fastcgi_param  REMOTE_PORT        $remote_port;
+fastcgi_param  SERVER_ADDR        $server_addr;
+fastcgi_param  SERVER_PORT        $server_port;
+fastcgi_param  SERVER_NAME        $server_name;
+
+fastcgi_param  REDIRECT_STATUS    200;
+EOL
+    sudo chmod 644 /opt/homebrew/etc/nginx/fastcgi_params
+    sudo chown $(whoami):admin /opt/homebrew/etc/nginx/fastcgi_params
+    check_status "Đã tạo file fastcgi_params" || exit 1
+fi
 
 # Create temporary file
 TMP_CONFIG="/tmp/nginx_$DOMAIN"
