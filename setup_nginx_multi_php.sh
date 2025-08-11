@@ -527,12 +527,29 @@ server {
     charset utf-8;
     client_max_body_size 100M;
     
+    # Security Headers
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    
+    # Content Security Policy - Allow Vue.js and modern web apps
+    add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline' 'unsafe-eval'; font-src 'self' http: https: data: blob:; img-src 'self' http: https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' http: https:; style-src 'self' 'unsafe-inline' http: https:; connect-src 'self' http: https: wss: ws:;" always;
+    
     # Logs
     access_log /opt/homebrew/var/log/nginx/$domain-access.log combined;
     error_log /opt/homebrew/var/log/nginx/$domain-error.log warn;
     
     location / {
         try_files \$uri \$uri/ /index.php?\$query_string;
+        
+        # Handle Vue.js routing
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+            add_header Access-Control-Allow-Origin "*";
+            try_files \$uri =404;
+        }
     }
     
     location = /favicon.ico { access_log off; log_not_found off; }
@@ -557,6 +574,19 @@ server {
     location ~* \.(jpg|jpeg|png|gif|ico|css|js|eot|ttf|woff|woff2)$ {
         expires max;
         add_header Cache-Control "public, no-transform";
+        add_header Access-Control-Allow-Origin "*";
+        add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
+        add_header Access-Control-Allow-Headers "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range";
+    }
+    
+    # Font files with proper CORS headers
+    location ~* \.(woff|woff2|ttf|eot|otf)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        add_header Access-Control-Allow-Origin "*";
+        add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
+        add_header Access-Control-Allow-Headers "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range";
+        add_header Vary "Accept-Encoding";
     }
 }
 EOF
@@ -573,6 +603,13 @@ EOF
     else
         print_color "yellow" "   ⚠️ Domain đã có trong /etc/hosts"
     fi
+    
+    # Create .php-version file for auto-switching
+    print_color "blue" "   📝 Tạo file .php-version..."
+    echo "$php_version" > "$project_path/.php-version"
+    sudo chown "$current_user:admin" "$project_path/.php-version"
+    sudo chmod 644 "$project_path/.php-version"
+    print_color "green" "   ✅ Đã tạo .php-version với PHP $php_version"
     
     # Final permission check
     print_color "blue" "   🔍 Kiểm tra cuối cùng..."
