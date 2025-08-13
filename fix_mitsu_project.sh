@@ -64,6 +64,19 @@ fix_project() {
         php_port="9074"  # PHP 7.4
     fi
     
+    # Auto-detect PHP version from .php-version file if exists
+    if [ -f "$project_path/.php-version" ]; then
+        local project_php_version=$(cat "$project_path/.php-version" | tr -d '[:space:]')
+        case $project_php_version in
+            "7.4") php_port="9074" ;;
+            "8.0") php_port="9080" ;;
+            "8.1") php_port="9081" ;;
+            "8.2") php_port="9082" ;;
+            "8.3") php_port="9083" ;;
+        esac
+        print_info "   📋 Dự án yêu cầu PHP $project_php_version (Port $php_port)"
+    fi
+    
     cat > "$nginx_config" << EOF
 server {
     listen 80;

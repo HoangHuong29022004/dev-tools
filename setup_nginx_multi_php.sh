@@ -467,30 +467,43 @@ EOF
 </html>
 EOF
 
-    # Create SSL certificate with full permissions
-    print_color "blue" "   🔒 Tạo SSL certificate..."
+    # Create SSL certificate với mkcert (được tin tưởng 100%)
+    print_color "blue" "   🔒 Tạo SSL certificate với mkcert..."
     local ssl_dir="/opt/homebrew/etc/nginx/ssl"
     sudo mkdir -p "$ssl_dir"
     sudo chown $(whoami):admin "$ssl_dir"
     sudo chmod 755 "$ssl_dir"
     
-    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-        -keyout "$ssl_dir/$domain.key" \
-        -out "$ssl_dir/$domain.crt" \
-        -subj "/CN=$domain" \
-        -addext "subjectAltName=DNS:$domain"
+    # Kiểm tra mkcert có sẵn không
+    if ! command -v mkcert &> /dev/null; then
+        print_color "blue" "   📦 Cài đặt mkcert..."
+        brew install mkcert
+        mkcert -install
+    fi
+    
+    # Tạo certificate với mkcert
+    cd "$ssl_dir"
+    mkcert "$domain" "*.$domain" localhost 127.0.0.1 ::1
+    
+    # Copy với tên đúng cho Nginx
+    cp "$domain+4.pem" "$domain.crt"
+    cp "$domain+4-key.pem" "$domain.key"
     
     # Set SSL file permissions
-    sudo chmod 644 "$ssl_dir/$domain.key" "$ssl_dir/$domain.crt"
-    sudo chown $(whoami):admin "$ssl_dir/$domain.key" "$ssl_dir/$domain.crt"
+    sudo chmod 644 "$domain.key" "$domain.crt"
+    sudo chown $(whoami):admin "$domain.key" "$domain.crt"
     
     # Verify SSL files
-    if [ -f "$ssl_dir/$domain.key" ] && [ -f "$ssl_dir/$domain.crt" ]; then
-        print_color "green" "   ✅ SSL certificate đã tạo thành công"
+    if [ -f "$domain.key" ] && [ -f "$domain.crt" ]; then
+        print_color "green" "   ✅ SSL certificate mkcert đã tạo thành công"
+        print_color "green" "   ✅ Certificate được tin tưởng 100% bởi browser"
     else
         print_color "red" "   ❌ Lỗi tạo SSL certificate!"
         return 1
     fi
+    
+    # Quay về thư mục gốc
+    cd - > /dev/null
     
     # Create Nginx configuration with full permissions
     print_color "blue" "   🌐 Tạo cấu hình Nginx..."

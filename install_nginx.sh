@@ -309,13 +309,22 @@ sudo chmod 644 /opt/homebrew/etc/nginx/sites-available/default
 print_color "blue" "🔗 Kích hoạt virtual host mặc định..."
 sudo ln -sf /opt/homebrew/etc/nginx/sites-available/default /opt/homebrew/etc/nginx/sites-enabled/
 
-# Create SSL directory and certificate
-print_color "blue" "🔒 Tạo SSL certificate cho localhost..."
-sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout /opt/homebrew/etc/nginx/ssl/localhost.key \
-    -out /opt/homebrew/etc/nginx/ssl/localhost.crt \
-    -subj "/CN=localhost" \
-    -addext "subjectAltName=DNS:localhost"
+# Create SSL directory and certificate với mkcert
+print_color "blue" "🔒 Tạo SSL certificate cho localhost với mkcert..."
+if ! command -v mkcert &> /dev/null; then
+    print_color "blue" "📦 Cài đặt mkcert..."
+    brew install mkcert
+    mkcert -install
+fi
+
+cd /opt/homebrew/etc/nginx/ssl
+mkcert localhost 127.0.0.1 ::1
+
+# Copy với tên đúng cho Nginx
+cp localhost+2.pem localhost.crt
+cp localhost+2-key.pem localhost.key
+
+cd - > /dev/null
 
 # Set proper permissions for SSL files
 sudo chmod 644 /opt/homebrew/etc/nginx/ssl/localhost.key
