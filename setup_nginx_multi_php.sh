@@ -152,30 +152,29 @@ cat > "$project_path/public/index.php" << 'EOF'
 </html>
 EOF
 
-# Tạo SSL certificate bằng OpenSSL
+# Tạo SSL certificate bằng mkcert (locally-trusted)
 ssl_dir="/opt/homebrew/etc/nginx/ssl"
 sudo mkdir -p "$ssl_dir"
 sudo chown $(whoami):admin "$ssl_dir"
 
-echo -e "${BLUE}🔒 Tạo SSL certificate bằng OpenSSL...${NORMAL}"
+echo -e "${BLUE}🔒 Tạo SSL certificate bằng mkcert (locally-trusted)...${NORMAL}"
 
-# Tạo private key
-openssl genrsa -out "$ssl_dir/$domain.key" 2048
+# Cài đặt mkcert nếu chưa có
+if ! command -v mkcert &> /dev/null; then
+    echo -e "${BLUE}📦 Cài đặt mkcert...${NORMAL}"
+    brew install mkcert
+    mkcert -install
+fi
 
-# Tạo certificate signing request
-openssl req -new -key "$ssl_dir/$domain.key" -out "$ssl_dir/$domain.csr" -subj "/C=VN/ST=Hanoi/L=Hanoi/O=Development/OU=IT/CN=$domain"
+cd "$ssl_dir"
+mkcert "$domain" "*.$domain" localhost 127.0.0.1 ::1
+cp "$domain+4.pem" "$domain.crt"
+cp "$domain+4-key.pem" "$domain.key"
+sudo chmod 644 "$domain.key" "$domain.crt"
+sudo chown $(whoami):admin "$domain.key" "$domain.crt"
+cd - > /dev/null
 
-# Tạo self-signed certificate
-openssl x509 -req -days 365 -in "$ssl_dir/$domain.csr" -signkey "$ssl_dir/$domain.key" -out "$ssl_dir/$domain.crt"
-
-# Xóa file CSR không cần thiết
-rm "$ssl_dir/$domain.csr"
-
-# Sửa quyền
-sudo chmod 644 "$ssl_dir/$domain.key" "$ssl_dir/$domain.crt"
-sudo chown $(whoami):admin "$ssl_dir/$domain.key" "$ssl_dir/$domain.crt"
-
-echo -e "${GREEN}✅ SSL certificate đã được tạo!${NORMAL}"
+echo -e "${GREEN}✅ SSL certificate đã được tạo (locally-trusted)!${NORMAL}"
 
 # Tạo cấu hình Nginx
 nginx_conf="/opt/homebrew/etc/nginx/sites-available/$domain"
@@ -253,7 +252,8 @@ if nginx -t; then
     echo -e "${GREEN}✅ Setup hoàn tất!${NORMAL}"
     echo -e "${BLUE}🌐 Domain: https://$domain${NORMAL}"
     echo -e "${BLUE}📁 Thư mục: $project_path${NORMAL}"
-    echo -e "${BLUE}🔒 SSL: Self-signed certificate (OpenSSL)${NORMAL}"
+    echo -e "${BLUE}🔒 SSL: Locally-trusted certificate (mkcert)${NORMAL}"
+    echo -e "${BLUE}💡 Không còn cảnh báo 'Your connection is not private'!${NORMAL}"
 else
     echo -e "${RED}❌ Cấu hình Nginx có lỗi!${NORMAL}"
     exit 1
