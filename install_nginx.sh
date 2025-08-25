@@ -38,14 +38,14 @@ brew install nginx || {
     exit 1
 }
 
-# Create necessary directories with sudo
+# Create necessary directories
 print_color "blue" "⚙️ Tạo cấu trúc thư mục..."
-sudo mkdir -p /opt/homebrew/etc/nginx/{sites-available,sites-enabled,ssl}
-sudo mkdir -p /opt/homebrew/var/{www,log/nginx}
-sudo mkdir -p /opt/homebrew/var/run/nginx/{client_body_temp,proxy_temp,fastcgi_temp,uwsgi_temp,scgi_temp}
-sudo chown -R $(whoami):admin /opt/homebrew/var/www
-sudo chown -R $(whoami):admin /opt/homebrew/var/log/nginx
-sudo chmod -R 755 /opt/homebrew/var/{log/nginx,run/nginx}
+mkdir -p /opt/homebrew/etc/nginx/{sites-available,sites-enabled,ssl}
+mkdir -p /opt/homebrew/var/{www,log/nginx}
+mkdir -p /opt/homebrew/var/run/nginx/{client_body_temp,proxy_temp,fastcgi_temp,uwsgi_temp,scgi_temp}
+chown -R $(whoami):admin /opt/homebrew/var/www
+chown -R $(whoami):admin /opt/homebrew/var/log/nginx
+chmod -R 755 /opt/homebrew/var/{log/nginx,run/nginx}
 
 # Copy mime.types from Homebrew
 print_color "blue" "📄 Copy file mime.types..."
@@ -59,9 +59,9 @@ MIME_TYPES_PATHS=(
 MIME_FOUND=0
 for mime_path in "${MIME_TYPES_PATHS[@]}"; do
     if [ -f "$mime_path" ]; then
-        sudo cp "$mime_path" /opt/homebrew/etc/nginx/mime.types
-        sudo chown $(whoami):admin /opt/homebrew/etc/nginx/mime.types
-        sudo chmod 644 /opt/homebrew/etc/nginx/mime.types
+        cp "$mime_path" /opt/homebrew/etc/nginx/mime.types
+        chown $(whoami):admin /opt/homebrew/etc/nginx/mime.types
+        chmod 644 /opt/homebrew/etc/nginx/mime.types
         MIME_FOUND=1
         break
     fi
@@ -69,7 +69,7 @@ done
 
 if [ $MIME_FOUND -eq 0 ]; then
     print_color "blue" "Tạo file mime.types mới..."
-    sudo tee /opt/homebrew/etc/nginx/mime.types << 'EOL'
+    tee /opt/homebrew/etc/nginx/mime.types << 'EOL'
 types {
     text/html                                        html htm shtml;
     text/css                                         css;
@@ -152,13 +152,13 @@ types {
     video/x-msvideo                                 avi;
 }
 EOL
-    sudo chown $(whoami):admin /opt/homebrew/etc/nginx/mime.types
-    sudo chmod 644 /opt/homebrew/etc/nginx/mime.types
+    chown $(whoami):admin /opt/homebrew/etc/nginx/mime.types
+    chmod 644 /opt/homebrew/etc/nginx/mime.types
 fi
 
 # Create fastcgi_params file
 print_color "blue" "📄 Tạo file fastcgi_params..."
-sudo tee /opt/homebrew/etc/nginx/fastcgi_params << 'EOL'
+tee /opt/homebrew/etc/nginx/fastcgi_params << 'EOL'
 fastcgi_param  QUERY_STRING       $query_string;
 fastcgi_param  REQUEST_METHOD     $request_method;
 fastcgi_param  CONTENT_TYPE       $content_type;
@@ -185,15 +185,15 @@ fastcgi_param  REDIRECT_STATUS    200;
 EOL
 
 # Set proper permissions for fastcgi_params
-sudo chmod 644 /opt/homebrew/etc/nginx/fastcgi_params
-sudo chown $(whoami):admin /opt/homebrew/etc/nginx/fastcgi_params
+chmod 644 /opt/homebrew/etc/nginx/fastcgi_params
+chown $(whoami):admin /opt/homebrew/etc/nginx/fastcgi_params
 
 # Ensure Nginx is stopped before configuration
 brew services stop nginx 2>/dev/null
 
 # Create main Nginx configuration
 print_color "blue" "⚙️ Tạo file cấu hình chính..."
-sudo tee /opt/homebrew/etc/nginx/nginx.conf << 'EOL'
+tee /opt/homebrew/etc/nginx/nginx.conf << 'EOL'
 worker_processes auto;
 worker_rlimit_nofile 65535;
 
@@ -241,22 +241,12 @@ EOL
 
 # Create default virtual host
 print_color "blue" "⚙️ Tạo virtual host mặc định..."
-sudo tee /opt/homebrew/etc/nginx/sites-available/default << 'EOL'
+tee /opt/homebrew/etc/nginx/sites-available/default << 'EOL'
 server {
     listen 8080;
-    listen 443 ssl;
-    http2 on;
     server_name localhost;
     root /opt/homebrew/var/www;
     index index.php index.html index.htm;
-
-    # SSL Configuration
-    ssl_certificate     /opt/homebrew/etc/nginx/ssl/localhost.crt;
-    ssl_certificate_key /opt/homebrew/etc/nginx/ssl/localhost.key;
-    
-    # SSL Settings
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
 
     charset utf-8;
     client_max_body_size 100M;
@@ -300,37 +290,14 @@ EOL
 
 # Set proper permissions for Nginx directories
 print_color "blue" "🔒 Thiết lập quyền truy cập..."
-sudo chown -R $(whoami):admin /opt/homebrew/etc/nginx
-sudo chmod -R 755 /opt/homebrew/etc/nginx
-sudo chmod 644 /opt/homebrew/etc/nginx/nginx.conf
-sudo chmod 644 /opt/homebrew/etc/nginx/sites-available/default
+chown -R $(whoami):admin /opt/homebrew/etc/nginx
+chmod -R 755 /opt/homebrew/etc/nginx
+chmod 644 /opt/homebrew/etc/nginx/nginx.conf
+chmod 644 /opt/homebrew/etc/nginx/sites-available/default
 
 # Create symbolic link to enable default site
 print_color "blue" "🔗 Kích hoạt virtual host mặc định..."
-sudo ln -sf /opt/homebrew/etc/nginx/sites-available/default /opt/homebrew/etc/nginx/sites-enabled/
-
-# Create SSL directory and certificate với mkcert
-print_color "blue" "🔒 Tạo SSL certificate cho localhost với mkcert..."
-if ! command -v mkcert &> /dev/null; then
-    print_color "blue" "📦 Cài đặt mkcert..."
-    brew install mkcert
-    mkcert -install
-fi
-
-cd /opt/homebrew/etc/nginx/ssl
-mkcert localhost 127.0.0.1 ::1
-
-# Copy với tên đúng cho Nginx
-cp localhost+2.pem localhost.crt
-cp localhost+2-key.pem localhost.key
-
-cd - > /dev/null
-
-# Set proper permissions for SSL files
-sudo chmod 644 /opt/homebrew/etc/nginx/ssl/localhost.key
-sudo chmod 644 /opt/homebrew/etc/nginx/ssl/localhost.crt
-sudo chown $(whoami):admin /opt/homebrew/etc/nginx/ssl/localhost.key
-sudo chown $(whoami):admin /opt/homebrew/etc/nginx/ssl/localhost.crt
+ln -sf /opt/homebrew/etc/nginx/sites-available/default /opt/homebrew/etc/nginx/sites-enabled/
 
 # Create test files
 print_color "blue" "📄 Tạo file test..."

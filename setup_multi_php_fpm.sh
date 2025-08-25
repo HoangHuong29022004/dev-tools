@@ -245,11 +245,54 @@ stop_all_php() {
     print_color "green" "✅ Hoàn tất dừng tất cả PHP versions!"
 }
 
+# Function to setup Nginx with unified config
+setup_nginx_unified() {
+    print_color "blue" "🌐 Setup Nginx với cấu hình thống nhất..."
+    
+    # Create unified Nginx config
+    local nginx_conf="/opt/homebrew/etc/nginx/sites-available/multi-domains.conf"
+    
+    if [ -f "$nginx_conf" ]; then
+        print_color "green" "✅ File cấu hình thống nhất đã tồn tại"
+    else
+        print_color "red" "❌ File cấu hình thống nhất không tồn tại!"
+        print_color "blue" "Vui lòng chạy setup_nginx_multi_php.sh trước"
+        return 1
+    fi
+    
+    # Remove all existing symbolic links
+    sudo rm -f /opt/homebrew/etc/nginx/sites-enabled/*
+    
+    # Create single symbolic link to unified config
+    sudo ln -sf "$nginx_conf" /opt/homebrew/etc/nginx/sites-enabled/multi-domains.conf
+    
+    # Fix permissions
+    sudo chown -R $(whoami):admin /opt/homebrew/etc/nginx
+    sudo chmod -R 755 /opt/homebrew/etc/nginx
+    
+    print_color "green" "✅ Đã setup Nginx với cấu hình thống nhất!"
+}
+
+# Function to restart Nginx
+restart_nginx() {
+    print_color "blue" "🔄 Khởi động lại Nginx..."
+    
+    # Test configuration
+    if nginx -t; then
+        # Restart Nginx
+        brew services restart nginx
+        print_color "green" "✅ Đã khởi động lại Nginx!"
+    else
+        print_color "red" "❌ Cấu hình Nginx có lỗi!"
+        return 1
+    fi
+}
+
 # Main menu
 show_menu() {
     echo ""
-    echo "🐘 Multi-PHP-FPM Setup Tool"
-    echo "============================"
+    echo "🐘 Multi-PHP-FPM Setup Tool (Unified Config)"
+    echo "============================================="
     echo ""
     echo "1. Setup tất cả PHP versions"
     echo "2. Khởi động tất cả PHP versions"
@@ -258,8 +301,10 @@ show_menu() {
     echo "5. Khởi động PHP version cụ thể"
     echo "6. Dừng PHP version cụ thể"
     echo "7. Khởi động lại PHP version cụ thể"
-    echo "8. Hiển thị trạng thái"
-    echo "9. Thoát"
+    echo "8. Setup Nginx với cấu hình thống nhất"
+    echo "9. Khởi động lại Nginx"
+    echo "10. Hiển thị trạng thái"
+    echo "11. Thoát"
     echo ""
 }
 
@@ -279,13 +324,20 @@ case "${1:-menu}" in
         sleep 2
         start_all_php
         ;;
+    "nginx")
+        setup_nginx_unified
+        restart_nginx
+        ;;
+    "restart-nginx")
+        restart_nginx
+        ;;
     "status")
         show_status
         ;;
     "menu")
         while true; do
             show_menu
-            read -p "Chọn tùy chọn (1-9): " choice
+            read -p "Chọn tùy chọn (1-11): " choice
             
             case $choice in
                 1) setup_all_php ;;
@@ -308,8 +360,10 @@ case "${1:-menu}" in
                     read -p "Nhập PHP version (7.4, 8.0, 8.1, 8.2, 8.3): " version
                     restart_php_fpm $version
                     ;;
-                8) show_status ;;
-                9) 
+                8) setup_nginx_unified ;;
+                9) restart_nginx ;;
+                10) show_status ;;
+                11) 
                     print_color "green" "👋 Tạm biệt!"
                     exit 0
                     ;;
@@ -324,11 +378,13 @@ case "${1:-menu}" in
         ;;
     *)
         echo "Cách sử dụng:"
-        echo "  bash setup_multi_php_fpm.sh setup     # Setup tất cả PHP"
-        echo "  bash setup_multi_php_fpm.sh start     # Khởi động tất cả PHP"
-        echo "  bash setup_multi_php_fpm.sh stop      # Dừng tất cả PHP"
-        echo "  bash setup_multi_php_fpm.sh restart   # Khởi động lại tất cả PHP"
-        echo "  bash setup_multi_php_fpm.sh status    # Hiển thị trạng thái"
-        echo "  bash setup_multi_php_fpm.sh menu      # Menu tương tác"
+        echo "  bash setup_multi_php_fpm.sh setup         # Setup tất cả PHP"
+        echo "  bash setup_multi_php_fpm.sh start         # Khởi động tất cả PHP"
+        echo "  bash setup_multi_php_fpm.sh stop          # Dừng tất cả PHP"
+        echo "  bash setup_multi_php_fpm.sh restart       # Khởi động lại tất cả PHP"
+        echo "  bash setup_multi_php_fpm.sh nginx         # Setup Nginx với cấu hình thống nhất"
+        echo "  bash setup_multi_php_fpm.sh restart-nginx # Khởi động lại Nginx"
+        echo "  bash setup_multi_php_fpm.sh status        # Hiển thị trạng thái"
+        echo "  bash setup_multi_php_fpm.sh menu          # Menu tương tác"
         ;;
 esac
