@@ -20,7 +20,7 @@ if [ -z "$project_name" ]; then
 fi
 
 # Tạo domain
-domain="${project_name}.code"
+domain="${project_name}.test"
 echo -e "${GREEN}✅ Domain: $domain${NORMAL}"
 
 # Chọn PHP version
