@@ -18,6 +18,12 @@ install_php() {
     
     echo -e "${BLUE}📦 Cài đặt PHP $version...${NORMAL}"
     
+    # Tạo thư mục PHP trước
+    echo -e "${BLUE}📁 Tạo thư mục PHP...${NORMAL}"
+    sudo mkdir -p /opt/homebrew/etc/php/$version
+    sudo chown -R $(whoami):admin /opt/homebrew/etc/php
+    sudo chmod -R 755 /opt/homebrew/etc/php
+    
     # Cài đặt PHP qua brew
     if brew install php@$version; then
         echo -e "${GREEN}✅ PHP $version đã cài đặt!${NORMAL}"
@@ -75,6 +81,11 @@ EOF
         # Load service
         launchctl load -w "$plist_file"
         
+        # Sửa quyền sau khi cài đặt
+        echo -e "${BLUE}🔧 Sửa quyền PHP...${NORMAL}"
+        sudo chown -R $(whoami):admin /opt/homebrew/etc/php/$version
+        sudo chmod -R 755 /opt/homebrew/etc/php/$version
+        
         echo -e "${GREEN}✅ PHP $version service đã start!${NORMAL}"
         return 0
     else
@@ -107,6 +118,25 @@ start_php() {
     fi
 }
 
+# Function để fix quyền cho tất cả PHP
+fix_php_permissions() {
+    echo -e "${BLUE}🔧 Sửa quyền cho tất cả PHP...${NORMAL}"
+    
+    sudo mkdir -p /opt/homebrew/etc/php
+    sudo chown -R $(whoami):admin /opt/homebrew/etc/php
+    sudo chmod -R 755 /opt/homebrew/etc/php
+    
+    for version in 7.4 8.0 8.1 8.2 8.3 8.4; do
+        if [ -d "/opt/homebrew/etc/php/$version" ]; then
+            sudo chown -R $(whoami):admin /opt/homebrew/etc/php/$version
+            sudo chmod -R 755 /opt/homebrew/etc/php/$version
+            echo -e "${GREEN}✅ Đã sửa quyền PHP $version${NORMAL}"
+        fi
+    done
+    
+    echo -e "${GREEN}✅ Hoàn thành sửa quyền!${NORMAL}"
+}
+
 # Main menu
 while true; do
     echo ""
@@ -119,10 +149,11 @@ while true; do
     echo "6) Cài đặt PHP 8.4"
     echo "7) Kiểm tra PHP đã cài"
     echo "8) Start tất cả PHP services"
-    echo "9) Thoát"
+    echo "9) Fix quyền PHP"
+    echo "10) Thoát"
     echo ""
     
-    read -p "Nhập lựa chọn (1-9): " choice
+    read -p "Nhập lựa chọn (1-10): " choice
     
     case $choice in
         1)
@@ -192,6 +223,9 @@ while true; do
             done
             ;;
         9)
+            fix_php_permissions
+            ;;
+        10)
             echo -e "${GREEN}👋 Tạm biệt!${NORMAL}"
             exit 0
             ;;
