@@ -8,7 +8,7 @@ PHP_VERSION=$1
 if [ -z "$PHP_VERSION" ]; then
     echo "Cách sử dụng: bash switch_php.sh <version>"
     echo "Ví dụ: bash switch_php.sh 7.4"
-    echo "Các version có sẵn: 7.4, 8.0, 8.1, 8.2, 8.3"
+    echo "Các version có sẵn: 7.4, 8.0, 8.1, 8.2, 8.3, 8.4"
     exit 1
 fi
 
@@ -25,7 +25,3 @@ export PATH="$PHP_PATH:$PATH"
 echo "✅ Đã chuyển sang PHP $PHP_VERSION"
 echo "Kiểm tra: php -v"
 php -v
-
-echo ""
-echo "💡 Để lưu vĩnh viễn, thêm vào ~/.bashrc hoặc ~/.zshrc:"
-echo "export PATH=\"/opt/homebrew/opt/php@$PHP_VERSION/bin:\$PATH\""
