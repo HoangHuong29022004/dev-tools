@@ -1,8 +1,8 @@
 # 🚀 Dev Tools - Cách Dùng
 
-## ⚡ Tool Nhanh Nhất: `mkproject.py`
+## ⚡ Tool Chính
 
-### Tạo project 1 dòng lệnh:
+### 1. Tạo Project - `mkproject.py` (./mk)
 
 ```bash
 cd ~/dev-tools
@@ -17,6 +17,26 @@ cd ~/dev-tools
 ```
 
 **Thời gian:** ~2-3 giây ⚡
+
+### 2. Quản Lý Projects - `manage.py` (./pm)
+
+```bash
+cd ~/dev-tools
+./pm
+```
+
+**Menu:**
+- 📋 Liệt kê tất cả projects
+- 👁️  Xem chi tiết project (config, SSL, hosts, files)
+- 🌐 Mở project trong browser
+- 🗑️  Xóa project (xóa sạch: thư mục, nginx config, SSL, hosts)
+
+**Xóa project nhanh:**
+```bash
+# Xóa bằng Python (tự động xóa hết)
+./pm
+# Chọn 4 → Chọn project → Confirm
+```
 
 ---
 
