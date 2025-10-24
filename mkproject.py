@@ -16,6 +16,7 @@ WWW = Path("/opt/homebrew/var/www")
 NGINX_CONF = Path("/opt/homebrew/etc/nginx/sites-available")
 NGINX_ENABLED = Path("/opt/homebrew/etc/nginx/sites-enabled")
 SSL_DIR = Path("/opt/homebrew/etc/nginx/ssl")
+HOSTS = Path("/etc/hosts")
 
 def run(cmd, shell=False):
     """Chạy lệnh"""
@@ -43,13 +44,54 @@ def setup_dirs():
     run("sudo pkill -9 -f nginx 2>/dev/null", shell=True)
     print("✅")
 
+def clean_old_project(name, domain):
+    """Xóa config và SSL cũ (giữ nguyên code)"""
+    cleaned = False
+    
+    # Xóa nginx config cũ
+    conf_file = NGINX_CONF / domain
+    if conf_file.exists():
+        conf_file.unlink()
+        cleaned = True
+    
+    enabled_file = NGINX_ENABLED / domain
+    if enabled_file.exists() or enabled_file.is_symlink():
+        enabled_file.unlink()
+        cleaned = True
+    
+    # Xóa SSL cũ
+    for cert in SSL_DIR.glob(f"{domain}*"):
+        cert.unlink()
+        cleaned = True
+    
+    # Xóa khỏi hosts
+    hosts_content = HOSTS.read_text()
+    if domain in hosts_content:
+        new_hosts = "\n".join([
+            line for line in hosts_content.split("\n")
+            if domain not in line
+        ])
+        run(f'sudo bash -c \'echo "{new_hosts}" > /etc/hosts\'', shell=True)
+        cleaned = True
+    
+    if cleaned:
+        print("   🧹 Đã xóa config cũ")
+
 def create_project(name, php_ver="8.2"):
     """Tạo project"""
     name = name.lower().replace("_", "-")
     domain = f"{name}.test"
     php_port = PHP_PORTS.get(php_ver, 9082)
     
-    print(f"\n🚀 Tạo: {domain} (PHP {php_ver})")
+    # Check project đã tồn tại
+    project_dir = WWW / name
+    exists = project_dir.exists()
+    
+    if exists:
+        print(f"\n🔄 Update: {domain} (PHP {php_ver})")
+        clean_old_project(name, domain)
+    else:
+        print(f"\n🚀 Tạo: {domain} (PHP {php_ver})")
     
     # Setup
     setup_dirs()
@@ -58,8 +100,10 @@ def create_project(name, php_ver="8.2"):
     project_dir = WWW / name / "public"
     project_dir.mkdir(parents=True, exist_ok=True)
     
-    # Index.php
-    (project_dir / "index.php").write_text(f"""<!DOCTYPE html>
+    # Index.php - chỉ tạo nếu chưa có (không ghi đè Laravel/WordPress)
+    index_file = project_dir / "index.php"
+    if not index_file.exists() or index_file.stat().st_size < 1000:
+        (project_dir / "index.php").write_text(f"""<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -88,17 +132,16 @@ def create_project(name, php_ver="8.2"):
 </html>
 """)
     
-    # SSL - chỉ tạo nếu chưa có (NHANH)
-    cert_file = SSL_DIR / f"{domain}.crt"
-    if not cert_file.exists():
-        print("🔒 SSL...", end=" ", flush=True)
-        os.chdir(SSL_DIR)
-        run(f"mkcert {domain} localhost 127.0.0.1 >/dev/null 2>&1", shell=True)
-        (SSL_DIR / f"{domain}+2.pem").rename(cert_file)
-        (SSL_DIR / f"{domain}+2-key.pem").rename(SSL_DIR / f"{domain}.key")
-        print("✅")
-    else:
-        print("🔒 SSL ✅ (đã có)")
+    # SSL - luôn tạo mới
+    print("🔒 SSL...", end=" ", flush=True)
+    os.chdir(SSL_DIR)
+    # Xóa cert cũ nếu có
+    for cert in SSL_DIR.glob(f"{domain}*"):
+        cert.unlink()
+    run(f"mkcert {domain} localhost 127.0.0.1 >/dev/null 2>&1", shell=True)
+    (SSL_DIR / f"{domain}+2.pem").rename(SSL_DIR / f"{domain}.crt")
+    (SSL_DIR / f"{domain}+2-key.pem").rename(SSL_DIR / f"{domain}.key")
+    print("✅")
     
     # Nginx config
     print("⚙️  Nginx...", end=" ", flush=True)
