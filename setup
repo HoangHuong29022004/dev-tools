@@ -1,0 +1,4 @@
+#!/bin/bash
+# Dev Environment Setup wrapper
+exec python3 "$(dirname "$0")/install.py" "$@"
+

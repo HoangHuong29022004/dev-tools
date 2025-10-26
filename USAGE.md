@@ -31,11 +31,27 @@ cd ~/dev-tools
 - 🌐 Mở project trong browser
 - 🗑️  Xóa project (xóa sạch: thư mục, nginx config, SSL, hosts)
 
-**Xóa project nhanh:**
+### 3. Cài Đặt Môi Trường - `install.py` (./setup)
+
 ```bash
-# Xóa bằng Python (tự động xóa hết)
-./pm
-# Chọn 4 → Chọn project → Confirm
+cd ~/dev-tools
+./setup
+```
+
+**Menu:**
+- 🌐 Nginx
+- 🐘 PHP (chọn versions: 7.4, 8.0, 8.1, 8.2, 8.3, 8.4)
+- 🎼 Composer
+- 📗 Node.js (chọn version: 18, 20, 22)
+- 🗄️  MySQL (chọn version: 5.7, 8.0, 8.4)
+- 🐟 Fish Shell
+- 🛠️  Essential Tools (git, wget, mkcert, imagemagick, redis, gh...)
+- 🚀 Cài tất cả (auto setup cho Mac mới)
+
+**Cài all một lần:**
+```bash
+./setup
+# Chọn 8 → Confirm → Xong!
 ```
 
 ---
