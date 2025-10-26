@@ -86,9 +86,22 @@ def create_project(name, php_ver="8.2"):
     # Check project đã tồn tại
     project_dir = WWW / name
     exists = project_dir.exists()
+    has_code = False
     
     if exists:
-        print(f"\n🔄 Update: {domain} (PHP {php_ver})")
+        # Check có code không (Laravel, WordPress, etc.)
+        public_dir = project_dir / "public"
+        if public_dir.exists():
+            index_file = public_dir / "index.php"
+            # Nếu có index.php lớn hơn 1KB = có code rồi
+            has_code = index_file.exists() and index_file.stat().st_size > 1000
+        
+        if has_code:
+            print(f"\n🔄 Update config: {domain} (PHP {php_ver})")
+            print("   📁 Giữ nguyên code")
+        else:
+            print(f"\n🔄 Update: {domain} (PHP {php_ver})")
+        
         clean_old_project(name, domain)
     else:
         print(f"\n🚀 Tạo: {domain} (PHP {php_ver})")
@@ -96,14 +109,15 @@ def create_project(name, php_ver="8.2"):
     # Setup
     setup_dirs()
     
-    # Tạo project dir
+    # Tạo project dir (chỉ tạo nếu chưa có)
     project_dir = WWW / name / "public"
     project_dir.mkdir(parents=True, exist_ok=True)
     
-    # Index.php - chỉ tạo nếu chưa có (không ghi đè Laravel/WordPress)
-    index_file = project_dir / "index.php"
-    if not index_file.exists() or index_file.stat().st_size < 1000:
-        (project_dir / "index.php").write_text(f"""<!DOCTYPE html>
+    # Index.php - CHỈ tạo nếu project MỚI (chưa có code)
+    if not has_code:
+        index_file = project_dir / "index.php"
+        if not index_file.exists():
+            (project_dir / "index.php").write_text(f"""<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -185,9 +199,38 @@ server {{
     if domain not in hosts:
         run(f'sudo bash -c \'echo "127.0.0.1 {domain}" >> /etc/hosts\'', shell=True)
     
-    # Start nginx - silent
-    run("sudo nginx -c /opt/homebrew/etc/nginx/nginx.conf 2>/dev/null", shell=True)
+    # Fix permissions để tránh lỗi 500
+    print("🔧 Fix permissions...", end=" ", flush=True)
+    
+    user = os.environ.get("USER")
+    project_path = WWW / name
+    
+    # Gộp tất cả lệnh sudo vào 1 lần
+    permission_cmds = f"""
+        chown -R {user}:admin {project_path} 2>/dev/null
+        chmod -R 755 {project_path} 2>/dev/null
+        chmod -R 777 /opt/homebrew/var/run/nginx 2>/dev/null
+    """
+    
+    # Laravel: fix storage và bootstrap/cache
+    if (project_path / "storage").exists():
+        permission_cmds += f"chmod -R 775 {project_path}/storage 2>/dev/null\n"
+    
+    if (project_path / "bootstrap/cache").exists():
+        permission_cmds += f"chmod -R 775 {project_path}/bootstrap/cache 2>/dev/null\n"
+    
+    # Chạy tất cả cùng lúc
+    run(f"sudo bash -c '{permission_cmds}'", shell=True)
+    
     print("✅")
+    
+    # Start/reload nginx
+    nginx_running = os.system("pgrep nginx >/dev/null 2>&1") == 0
+    
+    if nginx_running:
+        run("sudo nginx -s reload 2>/dev/null", shell=True)
+    else:
+        run("sudo nginx -c /opt/homebrew/etc/nginx/nginx.conf 2>/dev/null", shell=True)
     
     print(f"\n🎉 XONG!\n")
     print(f"🌐 https://{domain}")
