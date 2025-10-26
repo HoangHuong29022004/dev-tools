@@ -11,12 +11,14 @@ cd ~/dev-tools
 ./mk project-name
 
 # Tạo với PHP cụ thể
-./mk project-name 8.4
-./mk my-site 8.1
-./mk test 7.4
+./mk project-name 8.4  # PHP 8.4 → port 9084
+./mk my-site 8.1       # PHP 8.1 → port 9081
+./mk test 7.4          # PHP 7.4 → port 9074
 ```
 
 **Thời gian:** ~2-3 giây ⚡
+
+**Port mapping:** Mỗi PHP version dùng port riêng (7.4→9074, 8.0→9080, 8.1→9081, 8.2→9082, 8.3→9083, 8.4→9084)
 
 ### 2. Quản Lý Projects - `manage.py` (./pm)
 
@@ -41,6 +43,8 @@ cd ~/dev-tools
 **Menu:**
 - 🌐 Nginx
 - 🐘 PHP (chọn versions: 7.4, 8.0, 8.1, 8.2, 8.3, 8.4)
+  - **Port mapping:** PHP 7.4→9074, 8.0→9080, 8.1→9081, 8.2→9082, 8.3→9083, 8.4→9084
+  - Auto config từng version với port riêng
 - 🎼 Composer
 - 📗 Node.js (chọn version: 18, 20, 22)
 - 🗄️  MySQL (chọn version: 5.7, 8.0, 8.4)

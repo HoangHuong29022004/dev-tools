@@ -81,8 +81,9 @@ def install_php():
     print("\n🐘 PHP")
     print("="*50)
     print("\nChọn PHP versions cần cài (cách nhau bằng dấu cách):")
-    print("1) PHP 7.4  |  2) PHP 8.0  |  3) PHP 8.1")
-    print("4) PHP 8.2  |  5) PHP 8.3  |  6) PHP 8.4")
+    print("1) PHP 7.4 (port 9074)  |  2) PHP 8.0 (port 9080)")
+    print("3) PHP 8.1 (port 9081)  |  4) PHP 8.2 (port 9082)")
+    print("5) PHP 8.3 (port 9083)  |  6) PHP 8.4 (port 9084)")
     print("0) Bỏ qua")
     
     choice = input("\nChọn (vd: 4 5 6): ").strip()
@@ -94,22 +95,51 @@ def install_php():
         "4": "8.2", "5": "8.3", "6": "8.4"
     }
     
+    # Port mapping: PHP 8.4 → 9084, PHP 8.2 → 9082
+    def get_port(ver):
+        return f"90{ver.replace('.', '')}"
+    
     selected = [versions[c] for c in choice.split() if c in versions]
     
     for ver in selected:
         package = f"php@{ver}"
-        print(f"\n🔧 Cài PHP {ver}...")
+        port = get_port(ver)
+        
+        print(f"\n🔧 Cài PHP {ver} (port {port})...")
         
         if check_installed(package):
             print(f"✅ PHP {ver} đã cài!")
-            continue
-        
-        if run(f"brew install {package}"):
-            # Link
-            run(f"brew link {package} --force --overwrite", check=False)
-            print(f"✅ Đã cài PHP {ver}!")
         else:
-            print(f"❌ Không cài được PHP {ver}")
+            if run(f"brew install {package}"):
+                print(f"✅ Đã cài PHP {ver}!")
+            else:
+                print(f"❌ Không cài được PHP {ver}")
+                continue
+        
+        # Config port riêng cho từng version
+        conf_file = Path(f"/opt/homebrew/etc/php/{ver}/php-fpm.d/www.conf")
+        if conf_file.exists():
+            conf = conf_file.read_text()
+            
+            # Đổi từ socket sang port
+            if "listen = " in conf:
+                # Backup
+                conf_file.with_suffix('.conf.bak').write_text(conf)
+                
+                # Replace listen directive
+                lines = []
+                for line in conf.split('\n'):
+                    if line.startswith('listen = '):
+                        lines.append(f'listen = 127.0.0.1:{port}')
+                    else:
+                        lines.append(line)
+                
+                conf_file.write_text('\n'.join(lines))
+                print(f"   ⚙️  Configured port {port}")
+        
+        # Start service
+        run(f"brew services start {package}", check=False)
+        print(f"   🚀 Started PHP-FPM {ver}")
     
     return True
 
