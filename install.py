@@ -50,6 +50,8 @@ def install_nginx():
     
     if check_installed("nginx"):
         print("✅ Nginx đã cài đặt!")
+        # Vẫn cần fix config và permissions
+        fix_nginx_config()
         return True
     
     print("🔧 Đang cài Nginx...")
@@ -71,10 +73,82 @@ def install_nginx():
         # Fix permissions
         run("sudo chmod -R 777 /opt/homebrew/var/run/nginx", shell=True, check=False)
         
+        # Fix nginx config và permissions
+        fix_nginx_config()
+        
         print("✅ Đã cài Nginx!")
         print(f"   Config: /opt/homebrew/etc/nginx/nginx.conf")
         return True
     return False
+
+def fix_nginx_config():
+    """Fix nginx config và permissions"""
+    print("🔧 Fixing nginx config và permissions...")
+    
+    # 1. Cấu hình nginx với user _www
+    nginx_conf = Path("/opt/homebrew/etc/nginx/nginx.conf")
+    if nginx_conf.exists():
+        content = nginx_conf.read_text()
+        
+        # Thêm user _www nếu chưa có
+        if "user _www;" not in content:
+            lines = content.split('\n')
+            # Thêm user directive ở đầu file
+            if not lines[0].startswith('user '):
+                lines.insert(0, 'user _www;')
+                nginx_conf.write_text('\n'.join(lines))
+                print("   ✅ Đã thêm user _www vào nginx.conf")
+    
+    # 2. Tạo thư mục storage với quyền phù hợp
+    storage_dirs = [
+        "/opt/homebrew/var/www",
+        "/opt/homebrew/var/www/storage",
+        "/opt/homebrew/var/www/storage/app",
+        "/opt/homebrew/var/www/storage/framework",
+        "/opt/homebrew/var/www/storage/logs"
+    ]
+    
+    for dir_path in storage_dirs:
+        Path(dir_path).mkdir(parents=True, exist_ok=True)
+    
+    # 3. Set permissions cho storage directories
+    run("sudo chmod -R 775 /opt/homebrew/var/www", shell=True, check=False)
+    run("sudo chown -R $(whoami):staff /opt/homebrew/var/www", shell=True, check=False)
+    
+    # 4. Tạo script để fix permissions cho Laravel projects
+    fix_script = Path("/opt/homebrew/bin/fix-laravel-permissions")
+    fix_script.write_text('''#!/bin/bash
+# Fix Laravel permissions cho nginx
+PROJECT_PATH="$1"
+if [ -z "$PROJECT_PATH" ]; then
+    echo "Usage: fix-laravel-permissions /path/to/laravel/project"
+    exit 1
+fi
+
+echo "🔧 Fixing permissions for: $PROJECT_PATH"
+
+# Tạo storage directories nếu chưa có
+mkdir -p "$PROJECT_PATH/storage/app/public"
+mkdir -p "$PROJECT_PATH/storage/framework/cache"
+mkdir -p "$PROJECT_PATH/storage/framework/sessions"
+mkdir -p "$PROJECT_PATH/storage/framework/views"
+mkdir -p "$PROJECT_PATH/storage/logs"
+mkdir -p "$PROJECT_PATH/bootstrap/cache"
+
+# Set permissions
+chmod -R 775 "$PROJECT_PATH/storage"
+chmod -R 775 "$PROJECT_PATH/bootstrap/cache"
+
+# Set ownership
+chown -R $(whoami):staff "$PROJECT_PATH/storage"
+chown -R $(whoami):staff "$PROJECT_PATH/bootstrap/cache"
+
+echo "✅ Permissions fixed!"
+''')
+    run(f"chmod +x {fix_script}", shell=True, check=False)
+    
+    print("   ✅ Đã tạo script fix-laravel-permissions")
+    print("   💡 Sử dụng: fix-laravel-permissions /path/to/laravel/project")
 
 def install_php():
     """Cài PHP"""
@@ -351,6 +425,53 @@ def install_all():
     print("✅ HOÀN TẤT!")
     print("="*50)
 
+def fix_project_permissions():
+    """Fix permissions cho Laravel project"""
+    print("\n🔧 FIX LARAVEL PERMISSIONS")
+    print("="*50)
+    
+    project_path = input("Nhập đường dẫn project Laravel: ").strip()
+    if not project_path:
+        print("❌ Vui lòng nhập đường dẫn!")
+        return
+    
+    project_path = Path(project_path).expanduser().resolve()
+    
+    if not project_path.exists():
+        print(f"❌ Đường dẫn không tồn tại: {project_path}")
+        return
+    
+    if not (project_path / "artisan").exists():
+        print(f"❌ Không phải Laravel project: {project_path}")
+        return
+    
+    print(f"🔧 Fixing permissions cho: {project_path}")
+    
+    # Tạo storage directories
+    storage_dirs = [
+        "storage/app/public",
+        "storage/framework/cache",
+        "storage/framework/sessions", 
+        "storage/framework/views",
+        "storage/logs",
+        "bootstrap/cache"
+    ]
+    
+    for dir_path in storage_dirs:
+        full_path = project_path / dir_path
+        full_path.mkdir(parents=True, exist_ok=True)
+    
+    # Set permissions
+    run(f"chmod -R 775 {project_path}/storage", shell=True, check=False)
+    run(f"chmod -R 775 {project_path}/bootstrap/cache", shell=True, check=False)
+    
+    # Set ownership
+    run(f"chown -R $(whoami):staff {project_path}/storage", shell=True, check=False)
+    run(f"chown -R $(whoami):staff {project_path}/bootstrap/cache", shell=True, check=False)
+    
+    print("✅ Permissions đã được fix!")
+    print("💡 Bây giờ có thể upload ảnh qua nginx!")
+
 def main_menu():
     """Menu chính"""
     while True:
@@ -365,11 +486,12 @@ def main_menu():
         print("5.  🗄️  MySQL (chọn version)")
         print("6.  🐟 Fish Shell")
         print("7.  🛠️  Essential Tools")
-        print("8.  🚀 Cài tất cả")
-        print("9.  🚪 Thoát")
+        print("8.  🔧 Fix Laravel Permissions")
+        print("9.  🚀 Cài tất cả")
+        print("10. 🚪 Thoát")
         
         try:
-            choice = input("\nChọn (1-9): ").strip()
+            choice = input("\nChọn (1-10): ").strip()
             
             if choice == "1":
                 install_nginx()
@@ -386,12 +508,14 @@ def main_menu():
             elif choice == "7":
                 install_essentials()
             elif choice == "8":
-                install_all()
+                fix_project_permissions()
             elif choice == "9":
+                install_all()
+            elif choice == "10":
                 print("\n👋 Bye!\n")
                 break
             else:
-                print("❌ Chọn từ 1-9!")
+                print("❌ Chọn từ 1-10!")
         
         except KeyboardInterrupt:
             print("\n\n👋 Bye!\n")
