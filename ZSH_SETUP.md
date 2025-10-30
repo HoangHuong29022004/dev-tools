@@ -304,6 +304,11 @@ alias art="php artisan"
 alias sail="./vendor/bin/sail"
 alias serve="php -S localhost:8000"
 
+# Project creation shortcuts
+alias mk="python3 ~/dev-tools/mkproject.py"
+alias mkcode="python3 ~/dev-tools/mkproject.py"
+alias mktest="python3 ~/dev-tools/mkproject.py"
+
 # Git
 alias g="git"
 alias gst="git status"
@@ -443,6 +448,10 @@ alias c7.3="composer-with-php 7.3"
 # Alias cho composer tự động
 alias ca="composer-auto"
 
+# Project management shortcuts
+alias pm="python3 ~/dev-tools/manage.py"
+alias projects="python3 ~/dev-tools/manage.py"
+
 # Alias cho PHP versions
 alias php74='switch-php 7.4'
 alias php80='switch-php 8.0'
@@ -515,6 +524,11 @@ c8.2 install      # Alias ngắn gọn
 - `Ctrl+T` - Tìm file
 - `Ctrl+R` - Tìm trong history
 - `Ctrl+Alt+C` - CD vào thư mục
+
+### 🚀 Project Management
+- `mk project-name [php-version] [.test|.code]` - Tạo project nhanh
+- `pm` - Quản lý projects (xem, mở, xóa)
+- `projects` - Xem danh sách projects
 
 ### 🌟 Starship Prompt
 - Đẹp và nhanh

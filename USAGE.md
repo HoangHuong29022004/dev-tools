@@ -7,18 +7,30 @@
 ```bash
 cd ~/dev-tools
 
-# Tạo với PHP 8.2 (mặc định)
+# Tạo với PHP 8.2 + .test domain (mặc định)
 ./mk project-name
 
-# Tạo với PHP cụ thể
+# Tạo với PHP cụ thể + .test domain
 ./mk project-name 8.4  # PHP 8.4 → port 9084
 ./mk my-site 8.1       # PHP 8.1 → port 9081
 ./mk test 7.4          # PHP 7.4 → port 9074
+
+# Tạo với .code domain (cho công ty)
+./mk project-name 8.2 .code  # → project-name.code
+./mk my-app 8.4 .code        # → my-app.code
+./mk company-site 8.1 .code  # → company-site.code
+
+# Tạo với .test domain (rõ ràng)
+./mk project-name 8.2 .test  # → project-name.test
 ```
 
 **Thời gian:** ~2-3 giây ⚡
 
 **Port mapping:** Mỗi PHP version dùng port riêng (7.4→9074, 8.0→9080, 8.1→9081, 8.2→9082, 8.3→9083, 8.4→9084)
+
+**Domain types:** 
+- `.test` - Mặc định cho development cá nhân
+- `.code` - Cho dự án công ty/team
 
 ### 2. Quản Lý Projects - `manage.py` (./pm)
 
@@ -28,8 +40,8 @@ cd ~/dev-tools
 ```
 
 **Menu:**
-- 📋 Liệt kê tất cả projects
-- 👁️  Xem chi tiết project (config, SSL, hosts, files)
+- 📋 Liệt kê tất cả projects (hiển thị domain type: 🔧 .code, 🧪 .test)
+- 👁️  Xem chi tiết project (config, SSL, hosts, files, domain type)
 - 🌐 Mở project trong browser
 - 🗑️  Xóa project (xóa sạch: thư mục, nginx config, SSL, hosts)
 
@@ -203,13 +215,24 @@ sudo nginx -s reload
 
 ## 🎯 Examples
 
-### Tạo project Laravel
+### Tạo project Laravel cá nhân (.test)
 
 ```bash
 ./mk laravel-app 8.2
 cd /opt/homebrew/var/www/laravel-app
 composer create-project laravel/laravel .
 chmod -R 775 storage bootstrap/cache
+# Truy cập: https://laravel-app.test
+```
+
+### Tạo project Laravel công ty (.code)
+
+```bash
+./mk company-laravel 8.2 .code
+cd /opt/homebrew/var/www/company-laravel
+composer create-project laravel/laravel .
+chmod -R 775 storage bootstrap/cache
+# Truy cập: https://company-laravel.code
 ```
 
 ### Tạo project WordPress
@@ -218,6 +241,7 @@ chmod -R 775 storage bootstrap/cache
 ./mk wordpress 8.1
 cd /opt/homebrew/var/www/wordpress
 # Download WordPress và giải nén vào public/
+# Truy cập: https://wordpress.test
 ```
 
 ### Clone project từ Git
@@ -226,7 +250,9 @@ cd /opt/homebrew/var/www/wordpress
 cd /opt/homebrew/var/www
 git clone <repo-url> project-name
 cd ~/dev-tools
-./mk project-name 8.2
+./mk project-name 8.2 .code  # Cho dự án công ty
+# hoặc
+./mk project-name 8.2 .test  # Cho dự án cá nhân
 ```
 
 ---
@@ -250,10 +276,19 @@ sudo nginx -c /opt/homebrew/etc/nginx/nginx.conf
 
 ```bash
 cd /opt/homebrew/etc/nginx/ssl
+
+# Cho .test domain
 rm project-name.test.*
 mkcert project-name.test localhost 127.0.0.1
 cp project-name.test+2.pem project-name.test.crt
 cp project-name.test+2-key.pem project-name.test.key
+
+# Cho .code domain
+rm project-name.code.*
+mkcert project-name.code localhost 127.0.0.1
+cp project-name.code+2.pem project-name.code.crt
+cp project-name.code+2-key.pem project-name.code.key
+
 sudo nginx -s reload
 ```
 

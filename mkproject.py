@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
 Quick Project Maker - Tạo project Nginx + PHP cực nhanh
-Usage: python3 mkproject.py project-name [php-version]
+Usage: python3 mkproject.py project-name [php-version] [domain-type]
 Example: python3 mkproject.py myproject 8.2
+Example: python3 mkproject.py myproject 8.2 .code
+Example: python3 mkproject.py myproject 8.2 .test
 """
 
 import os
@@ -12,6 +14,7 @@ from pathlib import Path
 
 # Config
 PHP_PORTS = {"7.4": 9074, "8.0": 9080, "8.1": 9081, "8.2": 9082, "8.3": 9083, "8.4": 9084}
+DOMAIN_TYPES = [".test", ".code"]
 WWW = Path("/opt/homebrew/var/www")
 NGINX_CONF = Path("/opt/homebrew/etc/nginx/sites-available")
 NGINX_ENABLED = Path("/opt/homebrew/etc/nginx/sites-enabled")
@@ -77,10 +80,10 @@ def clean_old_project(name, domain):
     if cleaned:
         print("   🧹 Đã xóa config cũ")
 
-def create_project(name, php_ver="8.2"):
+def create_project(name, php_ver="8.2", domain_type=".test"):
     """Tạo project"""
     name = name.lower().replace("_", "-")
-    domain = f"{name}.test"
+    domain = f"{name}{domain_type}"
     php_port = PHP_PORTS.get(php_ver, 9082)
     
     # Check project đã tồn tại
@@ -239,19 +242,26 @@ server {{
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python3 mkproject.py project-name [php-version]")
+        print("Usage: python3 mkproject.py project-name [php-version] [domain-type]")
         print("Example: python3 mkproject.py myproject 8.2")
+        print("Example: python3 mkproject.py myproject 8.2 .code")
+        print("Example: python3 mkproject.py myproject 8.2 .test")
         sys.exit(1)
     
     name = sys.argv[1]
     php = sys.argv[2] if len(sys.argv) > 2 else "8.2"
+    domain_type = sys.argv[3] if len(sys.argv) > 3 else ".test"
     
     if php not in PHP_PORTS:
         print(f"❌ PHP version không hợp lệ! Chọn: {', '.join(PHP_PORTS.keys())}")
         sys.exit(1)
     
+    if domain_type not in DOMAIN_TYPES:
+        print(f"❌ Domain type không hợp lệ! Chọn: {', '.join(DOMAIN_TYPES)}")
+        sys.exit(1)
+    
     try:
-        create_project(name, php)
+        create_project(name, php, domain_type)
     except KeyboardInterrupt:
         print("\n❌ Đã hủy!")
     except Exception as e:

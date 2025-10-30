@@ -28,12 +28,28 @@ def get_projects():
     projects = []
     for p in WWW.iterdir():
         if p.is_dir() and not p.name.startswith('.'):
-            domain = f"{p.name}.test"
+            # Check cả .test và .code domains
+            test_domain = f"{p.name}.test"
+            code_domain = f"{p.name}.code"
+            
+            # Ưu tiên .code nếu có config, nếu không thì dùng .test
+            if (NGINX_CONF / code_domain).exists():
+                domain = code_domain
+                domain_type = ".code"
+            elif (NGINX_CONF / test_domain).exists():
+                domain = test_domain
+                domain_type = ".test"
+            else:
+                # Mặc định là .test nếu chưa có config nào
+                domain = test_domain
+                domain_type = ".test"
+            
             conf_exists = (NGINX_CONF / domain).exists()
             ssl_exists = (SSL_DIR / f"{domain}.crt").exists()
             projects.append({
                 'name': p.name,
                 'domain': domain,
+                'domain_type': domain_type,
                 'path': p,
                 'has_config': conf_exists,
                 'has_ssl': ssl_exists
@@ -53,13 +69,23 @@ def list_projects():
     
     for i, p in enumerate(projects, 1):
         status = "✅" if p['has_config'] and p['has_ssl'] else "⚠️"
-        print(f"{i:2}. {status} {p['name']:30} → https://{p['domain']}")
+        domain_type_icon = "🔧" if p['domain_type'] == ".code" else "🧪"
+        print(f"{i:2}. {status} {domain_type_icon} {p['name']:30} → https://{p['domain']}")
     
     print()
 
 def delete_project(name):
     """Xóa project hoàn toàn"""
-    domain = f"{name}.test"
+    # Tìm domain type thực tế
+    test_domain = f"{name}.test"
+    code_domain = f"{name}.code"
+    
+    if (NGINX_CONF / code_domain).exists():
+        domain = code_domain
+    elif (NGINX_CONF / test_domain).exists():
+        domain = test_domain
+    else:
+        domain = test_domain  # Mặc định
     
     print(f"\n🗑️  Đang xóa: {name}")
     
@@ -144,11 +170,25 @@ def delete_menu():
 
 def view_project(name):
     """Xem chi tiết project"""
-    domain = f"{name}.test"
+    # Tìm domain type thực tế
+    test_domain = f"{name}.test"
+    code_domain = f"{name}.code"
+    
+    if (NGINX_CONF / code_domain).exists():
+        domain = code_domain
+        domain_type = ".code"
+    elif (NGINX_CONF / test_domain).exists():
+        domain = test_domain
+        domain_type = ".test"
+    else:
+        domain = test_domain  # Mặc định
+        domain_type = ".test"
+    
     project_dir = WWW / name
     
     print(f"\n📦 PROJECT: {name}\n")
     print(f"🌐 Domain:  https://{domain}")
+    print(f"🏷️  Type:    {domain_type}")
     print(f"📁 Path:    {project_dir}")
     
     # Check nginx config
@@ -218,7 +258,17 @@ def view_menu():
 
 def open_browser(name):
     """Mở project trong browser"""
-    domain = f"{name}.test"
+    # Tìm domain type thực tế
+    test_domain = f"{name}.test"
+    code_domain = f"{name}.code"
+    
+    if (NGINX_CONF / code_domain).exists():
+        domain = code_domain
+    elif (NGINX_CONF / test_domain).exists():
+        domain = test_domain
+    else:
+        domain = test_domain  # Mặc định
+    
     print(f"🌐 Mở https://{domain}...")
     run(f"open https://{domain}", shell=True)
 
