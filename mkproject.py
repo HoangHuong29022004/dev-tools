@@ -13,7 +13,14 @@ import subprocess
 from pathlib import Path
 
 # Config
-PHP_PORTS = {"7.4": 9074, "8.0": 9080, "8.1": 9081, "8.2": 9082, "8.3": 9083, "8.4": 9084}
+PHP_PORTS = {
+    "7.4": 9074,
+    "8.0": 9080,
+    "8.1": 9081,
+    "8.2": 9082,
+    "8.3": 9083,
+    "8.4": 9084,
+}
 DOMAIN_TYPES = [".test", ".code"]
 WWW = Path("/opt/homebrew/var/www")
 NGINX_CONF = Path("/opt/homebrew/etc/nginx/sites-available")
@@ -21,11 +28,13 @@ NGINX_ENABLED = Path("/opt/homebrew/etc/nginx/sites-enabled")
 SSL_DIR = Path("/opt/homebrew/etc/nginx/ssl")
 HOSTS = Path("/etc/hosts")
 
+
 def run(cmd, shell=False):
     """Chạy lệnh"""
     if isinstance(cmd, str) and not shell:
         cmd = cmd.split()
     subprocess.run(cmd, shell=shell, check=False, capture_output=True)
+
 
 def setup_dirs():
     """Setup directories một lần - NHANH"""
@@ -36,61 +45,65 @@ def setup_dirs():
         Path("/opt/homebrew/var/run/nginx/proxy_temp"),
         Path("/opt/homebrew/var/run/nginx/fastcgi_temp"),
         Path("/opt/homebrew/var/log/nginx"),
-        NGINX_CONF, NGINX_ENABLED, SSL_DIR, WWW
+        NGINX_CONF,
+        NGINX_ENABLED,
+        SSL_DIR,
+        WWW,
     ]:
         d.mkdir(parents=True, exist_ok=True)
-    
+
     # Chỉ sudo 1 lần cho chmod nginx temp
     run("sudo chmod -R 777 /opt/homebrew/var/run/nginx 2>/dev/null", shell=True)
-    
+
     # Kill nginx nhanh
     run("sudo pkill -9 -f nginx 2>/dev/null", shell=True)
     print("✅")
 
+
 def clean_old_project(name, domain):
     """Xóa config và SSL cũ (giữ nguyên code)"""
     cleaned = False
-    
+
     # Xóa nginx config cũ
     conf_file = NGINX_CONF / domain
     if conf_file.exists():
         conf_file.unlink()
         cleaned = True
-    
+
     enabled_file = NGINX_ENABLED / domain
     if enabled_file.exists() or enabled_file.is_symlink():
         enabled_file.unlink()
         cleaned = True
-    
+
     # Xóa SSL cũ
     for cert in SSL_DIR.glob(f"{domain}*"):
         cert.unlink()
         cleaned = True
-    
+
     # Xóa khỏi hosts
     hosts_content = HOSTS.read_text()
     if domain in hosts_content:
-        new_hosts = "\n".join([
-            line for line in hosts_content.split("\n")
-            if domain not in line
-        ])
-        run(f'sudo bash -c \'echo "{new_hosts}" > /etc/hosts\'', shell=True)
+        new_hosts = "\n".join(
+            [line for line in hosts_content.split("\n") if domain not in line]
+        )
+        run(f"sudo bash -c 'echo \"{new_hosts}\" > /etc/hosts'", shell=True)
         cleaned = True
-    
+
     if cleaned:
         print("   🧹 Đã xóa config cũ")
 
-def create_project(name, php_ver="8.2", domain_type=".test"):
+
+def create_project(name, php_ver="8.2", domain_type=".code"):
     """Tạo project"""
     name = name.lower().replace("_", "-")
     domain = f"{name}{domain_type}"
     php_port = PHP_PORTS.get(php_ver, 9082)
-    
+
     # Check project đã tồn tại
     project_dir = WWW / name
     exists = project_dir.exists()
     has_code = False
-    
+
     if exists:
         # Check có code không (Laravel, WordPress, etc.)
         public_dir = project_dir / "public"
@@ -98,29 +111,30 @@ def create_project(name, php_ver="8.2", domain_type=".test"):
             index_file = public_dir / "index.php"
             # Nếu có index.php lớn hơn 1KB = có code rồi
             has_code = index_file.exists() and index_file.stat().st_size > 1000
-        
+
         if has_code:
             print(f"\n🔄 Update config: {domain} (PHP {php_ver})")
             print("   📁 Giữ nguyên code")
         else:
             print(f"\n🔄 Update: {domain} (PHP {php_ver})")
-        
+
         clean_old_project(name, domain)
     else:
         print(f"\n🚀 Tạo: {domain} (PHP {php_ver})")
-    
+
     # Setup
     setup_dirs()
-    
+
     # Tạo project dir (chỉ tạo nếu chưa có)
     project_dir = WWW / name / "public"
     project_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Index.php - CHỈ tạo nếu project MỚI (chưa có code)
     if not has_code:
         index_file = project_dir / "index.php"
         if not index_file.exists():
-            (project_dir / "index.php").write_text(f"""<!DOCTYPE html>
+            (project_dir / "index.php").write_text(
+                f"""<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -147,8 +161,9 @@ def create_project(name, php_ver="8.2", domain_type=".test"):
     </div>
 </body>
 </html>
-""")
-    
+"""
+            )
+
     # SSL - luôn tạo mới
     print("🔒 SSL...", end=" ", flush=True)
     os.chdir(SSL_DIR)
@@ -159,10 +174,11 @@ def create_project(name, php_ver="8.2", domain_type=".test"):
     (SSL_DIR / f"{domain}+2.pem").rename(SSL_DIR / f"{domain}.crt")
     (SSL_DIR / f"{domain}+2-key.pem").rename(SSL_DIR / f"{domain}.key")
     print("✅")
-    
+
     # Nginx config
     print("⚙️  Nginx...", end=" ", flush=True)
-    (NGINX_CONF / domain).write_text(f"""server {{
+    (NGINX_CONF / domain).write_text(
+        f"""server {{
     listen 80;
     server_name {domain};
     return 301 https://$server_name$request_uri;
@@ -192,53 +208,55 @@ server {{
     
     location ~ /\\. {{ deny all; }}
 }}
-""")
-    
+"""
+    )
+
     (NGINX_ENABLED / domain).unlink(missing_ok=True)
     (NGINX_ENABLED / domain).symlink_to(NGINX_CONF / domain)
-    
+
     # Hosts - không cần sudo tee, dùng bash nhanh hơn
     hosts = Path("/etc/hosts").read_text()
     if domain not in hosts:
-        run(f'sudo bash -c \'echo "127.0.0.1 {domain}" >> /etc/hosts\'', shell=True)
-    
+        run(f"sudo bash -c 'echo \"127.0.0.1 {domain}\" >> /etc/hosts'", shell=True)
+
     # Fix permissions để tránh lỗi 500
     print("🔧 Fix permissions...", end=" ", flush=True)
-    
+
     user = os.environ.get("USER")
     project_path = WWW / name
-    
+
     # Gộp tất cả lệnh sudo vào 1 lần
     permission_cmds = f"""
         chown -R {user}:admin {project_path} 2>/dev/null
         chmod -R 755 {project_path} 2>/dev/null
         chmod -R 777 /opt/homebrew/var/run/nginx 2>/dev/null
     """
-    
+
     # Laravel: fix storage và bootstrap/cache
     if (project_path / "storage").exists():
         permission_cmds += f"chmod -R 775 {project_path}/storage 2>/dev/null\n"
-    
+
     if (project_path / "bootstrap/cache").exists():
         permission_cmds += f"chmod -R 775 {project_path}/bootstrap/cache 2>/dev/null\n"
-    
+
     # Chạy tất cả cùng lúc
     run(f"sudo bash -c '{permission_cmds}'", shell=True)
-    
+
     print("✅")
-    
+
     # Start/reload nginx
     nginx_running = os.system("pgrep nginx >/dev/null 2>&1") == 0
-    
+
     if nginx_running:
         run("sudo nginx -s reload 2>/dev/null", shell=True)
     else:
         run("sudo nginx -c /opt/homebrew/etc/nginx/nginx.conf 2>/dev/null", shell=True)
-    
+
     print(f"\n🎉 XONG!\n")
     print(f"🌐 https://{domain}")
     print(f"📁 {WWW}/{name}")
     print(f"🐘 PHP {php_ver}\n")
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
@@ -247,23 +265,22 @@ if __name__ == "__main__":
         print("Example: python3 mkproject.py myproject 8.2 .code")
         print("Example: python3 mkproject.py myproject 8.2 .test")
         sys.exit(1)
-    
+
     name = sys.argv[1]
     php = sys.argv[2] if len(sys.argv) > 2 else "8.2"
-    domain_type = sys.argv[3] if len(sys.argv) > 3 else ".test"
-    
+    domain_type = sys.argv[3] if len(sys.argv) > 3 else ".code"
+
     if php not in PHP_PORTS:
         print(f"❌ PHP version không hợp lệ! Chọn: {', '.join(PHP_PORTS.keys())}")
         sys.exit(1)
-    
+
     if domain_type not in DOMAIN_TYPES:
         print(f"❌ Domain type không hợp lệ! Chọn: {', '.join(DOMAIN_TYPES)}")
         sys.exit(1)
-    
+
     try:
         create_project(name, php, domain_type)
     except KeyboardInterrupt:
         print("\n❌ Đã hủy!")
     except Exception as e:
         print(f"\n❌ Lỗi: {e}")
-

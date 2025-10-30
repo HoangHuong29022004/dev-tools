@@ -7,8 +7,8 @@
 ```bash
 cd ~/dev-tools
 
-# Tạo với PHP 8.2 + .test domain (mặc định)
-./mk project-name
+# Tạo với PHP 8.2 + .code domain (mặc định)
+./mk project-name  # → project-name.code
 
 # Tạo với PHP cụ thể + .test domain
 ./mk project-name 8.4  # PHP 8.4 → port 9084
@@ -29,8 +29,8 @@ cd ~/dev-tools
 **Port mapping:** Mỗi PHP version dùng port riêng (7.4→9074, 8.0→9080, 8.1→9081, 8.2→9082, 8.3→9083, 8.4→9084)
 
 **Domain types:** 
-- `.test` - Mặc định cho development cá nhân
-- `.code` - Cho dự án công ty/team
+- `.code` - Mặc định (công ty/team)
+- `.test` - Cho development cá nhân
 
 ### 2. Quản Lý Projects - `manage.py` (./pm)
 
